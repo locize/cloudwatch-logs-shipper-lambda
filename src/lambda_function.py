@@ -41,7 +41,12 @@ def _parse_cloudwatch_log(log, aws_logs_data, log_type):
     # If FORMAT is json treat message as a json
     try:
         if os.environ['FORMAT'].lower() == 'json':
-            json_object = json.loads(log['message'])
+            splitted = log['message'].split('\t')
+            if len(splitted) > 2 and splitted[2].startswith("{") and splitted[2].endswith("}"):
+                json_object = json.loads(splitted[2])
+                log['requestId'] = splitted[1]
+            else:
+                json_object = json.loads(log['message'])
             for key, value in json_object.items():
                 log[key] = value
     except (KeyError, ValueError):
