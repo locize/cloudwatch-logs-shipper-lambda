@@ -22,6 +22,13 @@ def _extract_aws_logs_data(event):
         logger.error("Got exception while loading json, message: {}".format(e))
         raise ValueError("Exception: json loads")
 
+def extract(msg, fromStr, toStr, convert):
+    start = msg.index(fromStr) + len(fromStr)
+    end = msg.rfind(toStr)
+    part = msg[start:end]
+    if convert:
+        return int(float(part))
+    return part
 
 def _parse_cloudwatch_log(log, aws_logs_data, log_type):
     # type: (dict, dict) -> None
@@ -42,10 +49,20 @@ def _parse_cloudwatch_log(log, aws_logs_data, log_type):
     try:
         if os.environ['FORMAT'].lower() == 'json':
             splitted = log['message'].split('\t')
+            skipJSONParsing = log['message'].startswith('START') \
+                    or log['message'].startswith('END') \
+                    or log['message'].startswith('REPORT')
             if len(splitted) > 2 and splitted[2].startswith("{") and splitted[2].endswith("}"):
                 json_object = json.loads(splitted[2])
                 log['requestId'] = splitted[1]
             else:
+                if skipJSONParsing:
+                    splitted2 = log['message'].replace('\t', ' ').split(' ')
+                    log['requestId'] = splitted2[2]
+                    if log['message'].startswith('REPORT'):
+                        log['duration'] = extract(log['message'], 'Duration: ', ' ms	Billed', True)
+                        log['memorySize'] = extract(log['message'], 'Memory Size: ', ' MB	Max', True)
+                        log['memoryUsed'] = extract(log['message'], 'Max Memory Used: ', ' MB', True)
                 json_object = json.loads(log['message'])
             for key, value in json_object.items():
                 log[key] = value
