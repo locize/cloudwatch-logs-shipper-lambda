@@ -49,6 +49,9 @@ def _parse_cloudwatch_log(log, aws_logs_data, log_type):
     try:
         if os.environ['FORMAT'].lower() == 'json':
             splitted = log['message'].split('\t')
+            if len(splitted) > 3 and (splitted[2] == 'INFO' or splitted[2] == 'ERROR' or splitted[2] == 'TRACE' or splitted[2] == 'DEBUG'):
+                log['level'] = splitted[2]
+                del splitted[2]
             skipJSONParsing = log['message'].startswith('START') \
                     or log['message'].startswith('END') \
                     or log['message'].startswith('REPORT')
